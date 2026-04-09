@@ -1,0 +1,41 @@
+# R Package ignores
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Build artifacts
+*.o
+*.so
+*.dll
+src/*.o
+src/*.so
+
+# R CMD check artefacts
+/*.Rcheck/
+*.tar.gz
+
+# roxygen2 generated files (do not edit by hand)
+/man/*.Rd
+
+# pkgdown site
+/docs/
+
+# Vignette cache
+/vignettes/*.html
+/vignettes/*.pdf
+vignettes/*_cache/
+vignettes/*_files/
+
+# testthat snapshots
+tests/testthat/_snaps/
+
+# Environment variables with API credentials - never commit credentials
+.Renviron
+
+# OS
+.DS_Store
+Thumbs.db
+
+/.quarto/
+**/*.quarto_ipynb
