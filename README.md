@@ -61,7 +61,7 @@ fetch_ldc_data(
 # 4. Build AERO inputs
 result <- generate_aero_inputs(
   data_dir     = base_dir,
-  output_dir   = file.path(base_dir, "output"),
+  output_dir   = file.path(base_dir, "aero_inpudata"),
   texture_file = file.path(base_dir, "soil_texture_w_sand_frac.tif")
 )
 ```
@@ -78,14 +78,13 @@ API_PASSWORD=your_password
 
 ## Output structure
 
-After running the full pipeline, `output_dir` will contain:
+After running the full pipeline, `aero_inpudata` will contain:
 
 ```
-output/
+aero_inpudata/
   gap/
     <PrimaryKey>.txt     # canopy gap distances (fraction)
-  ini/
-    <PrimaryKey>.ini     # AERO configuration file per plot
+  <PrimaryKey>.ini       # AERO configuration file per plot
   input_data.csv         # combined summary table
 ```
 
