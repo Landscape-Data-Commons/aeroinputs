@@ -68,7 +68,7 @@ result <- generate_aero_inputs(
 
 ## API credentials
 Credentials are read from environment variables. Add them to your
-`~/.Renviron` (use `usethis::edit_r_environ()` or see `Renviron.txt` for details) and **never commit them
+`~/.Renviron` (use `usethis::edit_r_environ()`) and **never commit them
 to version control**:
 
 ```
