@@ -8,11 +8,15 @@
 #' @param token Optional LDC token (character) passed to `trex::fetch_ldc()`.
 #'   When `NULL`, trex will attempt default authentication.
 #' @param primary_keys Optional character vector of `PrimaryKey`s to use
-#'   directly. When supplied, `excluded_project_keys` is ignored. The header is
-#'   still loaded/fetched (using the cache if available) and filtered to these
-#'   keys for downstream spatial joins.
+#'   directly. When supplied, `excluded_project_keys` and `project_keys` are
+#'   ignored. The header is still loaded/fetched (using the cache if available)
+#'   and filtered to these keys for downstream spatial joins.
+#' @param project_keys Optional character vector of `ProjectKey` values. When
+#'   supplied, all `PrimaryKey`s belonging to those projects are used and
+#'   `excluded_project_keys` is ignored. Ignored when `primary_keys` is
+#'   supplied.
 #' @param excluded_project_keys Character vector of `ProjectKey` values to
-#'   exclude. Ignored when `primary_keys` is supplied.
+#'   exclude. Ignored when `primary_keys` or `project_keys` is supplied.
 #' @param chain_types Character vector of dataset names to fetch in order.
 #' @param n_rec Optional integer; limit the number of `PrimaryKey`s processed
 #'   (useful for testing). `NULL` uses all available keys.
@@ -43,6 +47,7 @@
 fetch_ldc_data <- function(
   token = NULL,
   primary_keys = NULL,
+  project_keys = NULL,
   excluded_project_keys = c(
     "BLM_AIM",
     "NWERN_Moab", "NWERN_Lordsburg", "NWERN_HAFB", "NWERN_Mandan",
@@ -78,10 +83,10 @@ fetch_ldc_data <- function(
   # ---- Header: load from cache or fetch from API ----------------------------
 
   if (!is.null(primary_keys)) {
-    # User supplied keys: skip excluded_project_keys filter
+    # User supplied PrimaryKeys: highest priority, ignores project_keys and excluded_project_keys
     progress_message(
       "primary_keys supplied (", length(primary_keys),
-      "); skipping excluded_project_keys filter.",
+      "); skipping project_keys and excluded_project_keys filter.",
       verbose = verbose
     )
     primary_keys <- unique(primary_keys[!is.na(primary_keys)])
@@ -90,19 +95,55 @@ fetch_ldc_data <- function(
       stop("No valid primary_keys provided after removing NAs and duplicates.")
     }
 
-    n_rec  <- if (!is.null(n_rec) && !is.na(n_rec)) {
-      min(n_rec, length(primary_keys)) 
-    } else { 
-      length(primary_keys) 
+    n_rec <- if (!is.null(n_rec) && !is.na(n_rec)) {
+      min(n_rec, length(primary_keys))
+    } else {
+      length(primary_keys)
     }
     header <- .load_or_fetch_header(header_cache_file, token, base_url, verbose)
 
     stopifnot(all(c("ProjectKey", "PrimaryKey") %in% names(header)))
-    header <- header |> 
+    header <- header |>
       dplyr::filter(PrimaryKey %in% primary_keys)
-    
+
     progress_message(
       "Header filtered to ", nrow(header), " rows matching supplied primary_keys.",
+      verbose = verbose
+    )
+
+  } else if (!is.null(project_keys)) {
+    # User supplied ProjectKeys: fetch all PrimaryKeys belonging to those projects
+    progress_message(
+      "project_keys supplied (", length(project_keys),
+      "); skipping excluded_project_keys filter.",
+      verbose = verbose
+    )
+    project_keys <- unique(project_keys[!is.na(project_keys)])
+
+    if (length(project_keys) == 0) {
+      stop("No valid project_keys provided after removing NAs and duplicates.")
+    }
+
+    header <- .load_or_fetch_header(header_cache_file, token, base_url, verbose)
+    stopifnot(all(c("ProjectKey", "PrimaryKey") %in% names(header)))
+
+    header <- header |>
+      dplyr::filter(ProjectKey %in% project_keys)
+
+    if (nrow(header) == 0) {
+      stop("No PrimaryKeys found for the supplied project_keys: ",
+           paste(project_keys, collapse = ", "))
+    }
+
+    primary_keys <- header$PrimaryKey
+    n_rec <- if (!is.null(n_rec) && !is.na(n_rec)) {
+      min(n_rec, length(primary_keys))
+    } else {
+      length(primary_keys)
+    }
+
+    progress_message(
+      "Header filtered to ", nrow(header), " rows matching supplied project_keys.",
       verbose = verbose
     )
 
@@ -111,9 +152,9 @@ fetch_ldc_data <- function(
     header <- .load_or_fetch_header(header_cache_file, token, base_url, verbose)
     stopifnot(all(c("ProjectKey", "PrimaryKey") %in% names(header)))
 
-    header_filtered <- header |> 
+    header_filtered <- header |>
       dplyr::filter(ProjectKey %notin% excluded_project_keys)
-    
+
     primary_keys <- header_filtered$PrimaryKey
     n_rec <- if (!is.null(n_rec) && !is.na(n_rec)) {
       min(n_rec, length(primary_keys))

@@ -90,6 +90,43 @@ result <- fetch_ldc_data(
 )
 ```
 
+## Filtering by ProjectKey
+
+Use `project_keys` to fetch all plots belonging to one or more specific
+projects. This overrides `excluded_project_keys` and is useful when you
+want all plots from a known project without having to enumerate individual
+`PrimaryKey`s.
+
+```{r project-keys}
+result <- fetch_ldc_data(
+  token        = my_token,
+  base_dir     = base_dir,
+  project_keys = "CFO_USGS",
+  write_out    = TRUE,
+  verbose      = TRUE
+)
+```
+
+You can pass multiple projects as a character vector:
+
+```{r project-keys-multi}
+result <- fetch_ldc_data(
+  token        = my_token,
+  base_dir     = base_dir,
+  project_keys = c("CFO_USGS", "NWERN_Moab"),
+  write_out    = TRUE,
+  verbose      = TRUE
+)
+```
+
+**Priority order** when multiple filter arguments are supplied:
+
+| Argument               | Priority | Overrides                          |
+|------------------------|----------|------------------------------------|
+| `primary_keys`         | Highest  | `project_keys`, `excluded_project_keys` |
+| `project_keys`         | Middle   | `excluded_project_keys`            |
+| `excluded_project_keys`| Lowest   | —                                  |
+
 ## Caching the header
 
 The full LDC header table (~65 k rows) is cached as an `.RData` file
