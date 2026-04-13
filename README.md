@@ -33,6 +33,7 @@ GitHub repositories automatically (declared in `DESCRIPTION: Remotes`).
 library(aeroinputs)
 
 base_dir <- "~/LDC/AERO_test"
+texture_file <- file.path(base_dir, "soil_texture_w_sand_frac.tif")
 
 # 1. Get API token (credentials stored in .Renviron)
 my_token <- trex::get_ldc_token(
@@ -46,7 +47,7 @@ fetch_solus(
   depth_slices = 0,
   output_type  = "prediction",
   return       = "grid",
-  filename     = file.path(base_dir, "soil_texture_w_sand_frac.tif"),
+  filename     = texture_file,
   overwrite    = FALSE
 )
 
@@ -61,8 +62,8 @@ fetch_ldc_data(
 # 4. Build AERO inputs
 result <- generate_aero_inputs(
   data_dir     = base_dir,
-  output_dir   = file.path(base_dir, "aero_inpudata"),
-  texture_file = file.path(base_dir, "soil_texture_w_sand_frac.tif")
+  output_dir   = file.path(base_dir, "aero_inputdata"),
+  texture_file = texture_file
 )
 ```
 
@@ -78,10 +79,10 @@ API_PASSWORD=your_password
 
 ## Output structure
 
-After running the full pipeline, `aero_inpudata` will contain:
+After running the full pipeline, `aero_inputdata` will contain:
 
 ```
-aero_inpudata/
+aero_inputdata/
   gap/
     <PrimaryKey>.txt     # canopy gap distances (fraction)
   <PrimaryKey>.ini       # AERO configuration file per plot

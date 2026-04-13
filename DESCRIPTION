@@ -2,16 +2,18 @@ Package: aeroinputs
 Title: Prepare AERO Wind Erosion Model Inputs from LDC and SOLUS Data
 Version: 0.1.0
 Authors@R: 
-    c(person("Geovany", "Ramirez", , "georam@nmsu.edu", role = c("aut", "cre")),
-      person("Brandi", "Wheeler", , "bwheeler@nmsu.edu", role = c("aut", "cre")),
-      person("Sarah", "McCord", , "sarah.mccord@usda.gov", role = c("aut", "cre"))))
+    c(
+        person("Geovany", "Ramirez", , "georam@nmsu.edu", role = c("aut", "cre")),
+        person("Brandi", "Wheeler", , "bwheeler@nmsu.edu", role = "aut"),
+        person("Sarah", "McCord", , "sarah.mccord@usda.gov", role = "aut")
+    )
 Description: Fetches LDC (Landscape Data Commons) plot-level datasets, retrieves
     SOLUS 100 soil-texture rasters, and assembles the gap, INI configuration,
     and summary CSV files required by the AERO wind-erosion model.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 URL: https://github.com/Landscape-Data-Commons/aeroinputs
 BugReports: https://github.com/Landscape-Data-Commons/aeroinputs/issues
 Imports:
