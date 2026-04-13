@@ -119,13 +119,57 @@ result <- fetch_ldc_data(
 )
 ```
 
-**Priority order** when multiple filter arguments are supplied:
+## Restricted projects and default exclusions
 
-| Argument               | Priority | Overrides                          |
-|------------------------|----------|------------------------------------|
-| `primary_keys`         | Highest  | `project_keys`, `excluded_project_keys` |
-| `project_keys`         | Middle   | `excluded_project_keys`            |
-| `excluded_project_keys`| Lowest   | —                                  |
+Some projects are **restricted by default** because their data is pending
+publication or currently under review and should not be used in general
+analyses:
+
+- **`NWERN_*`** — all National Wind Erosion Research Network sites
+  (e.g. `NWERN_Moab`, `NWERN_JER`, `NWERN_CPER`, etc.) are excluded
+  pending formal data publication.
+- **`CFO_USGS`** — excluded because the dataset is currently under
+  review and has not yet been cleared for unrestricted use.
+
+These exclusions are applied **automatically** in all calls unless you
+explicitly override them via `project_keys` or `primary_keys` (see
+priority table below).
+
+```{r restricted}
+# This will work: project_keys bypasses the default exclusion
+result <- fetch_ldc_data(
+  token        = my_token,
+  base_dir     = base_dir,
+  project_keys = "CFO_USGS",   # explicitly requested: exclusion is bypassed
+  write_out    = TRUE,
+  verbose      = TRUE
+)
+```
+
+### Priority and exclusion logic
+
+The three filter arguments follow a strict priority order:
+
+| Argument                | Priority | Behaviour |
+|-------------------------|----------|-----------|
+| `primary_keys`          | Highest  | Uses exactly those keys; ignores `project_keys` and `excluded_project_keys` (including mandatory exclusions) |
+| `project_keys`          | Middle   | Fetches all PrimaryKeys for those projects; ignores `excluded_project_keys` (including mandatory exclusions) |
+| `excluded_project_keys` | Lowest   | Applied only when neither `primary_keys` nor `project_keys` is supplied. **`NWERN_*` and `CFO_USGS` are always appended**, even when you supply your own list |
+
+Examples of how exclusions interact:
+
+| Call | Excluded projects |
+|------|------------------|
+| `fetch_ldc_data(...)` | All `NWERN_*` + `CFO_USGS` (default) |
+| `fetch_ldc_data(..., excluded_project_keys = "BLM_AIM")` | `BLM_AIM` + all `NWERN_*` + `CFO_USGS` |
+| `fetch_ldc_data(..., excluded_project_keys = character(0))` | All `NWERN_*` + `CFO_USGS` (mandatory, cannot be removed this way) |
+| `fetch_ldc_data(..., project_keys = "CFO_USGS")` | None — `project_keys` bypasses all exclusions |
+| `fetch_ldc_data(..., primary_keys = my_keys)` | None — `primary_keys` bypasses all exclusions |
+
+> **Note:** The only way to access `NWERN_*` or `CFO_USGS` data is to
+> request them explicitly via `project_keys` or `primary_keys`.
+> Supplying them in `excluded_project_keys = character(0)` will **not**
+> remove the mandatory exclusion.
 
 ## Caching the header
 

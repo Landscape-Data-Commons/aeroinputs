@@ -17,6 +17,8 @@
 #'   supplied.
 #' @param excluded_project_keys Character vector of `ProjectKey` values to
 #'   exclude. Ignored when `primary_keys` or `project_keys` is supplied.
+#'   Defaults to excluding all projects whose key starts with `"NWERN_"` and
+#'   `"CFO_USGS"`. Pass `character(0)` to disable all exclusions.
 #' @param chain_types Character vector of dataset names to fetch in order.
 #' @param n_rec Optional integer; limit the number of `PrimaryKey`s processed
 #'   (useful for testing). `NULL` uses all available keys.
@@ -48,13 +50,7 @@ fetch_ldc_data <- function(
   token = NULL,
   primary_keys = NULL,
   project_keys = NULL,
-  excluded_project_keys = c(
-    "BLM_AIM",
-    "NWERN_Moab", "NWERN_Lordsburg", "NWERN_HAFB", "NWERN_Mandan",
-    "NWERN_TwinValley", "NWERN_JER", "NWERN_CPER", "NWERN_Akron",
-    "NWERN_ElReno", "NWERN_Morton", "NWERN_Pullman", "NWERN_SLV",
-    "NWERN_RedHills"
-  ),
+  excluded_project_keys = NULL,
   chain_types = c("gap", "height", "lpi", "indicators"),
   n_rec = NULL,
   n_offset = 0,
@@ -148,9 +144,31 @@ fetch_ldc_data <- function(
     )
 
   } else {
-    # Normal path: load/fetch header then apply project key exclusion
+    # Normal path: load/fetch header then apply project key exclusion.
+    # Default exclusion: all NWERN_* projects and CFO_USGS.
     header <- .load_or_fetch_header(header_cache_file, token, base_url, verbose)
     stopifnot(all(c("ProjectKey", "PrimaryKey") %in% names(header)))
+
+    mandatory_exclusions <- c(
+      "CFO_USGS",
+      grep("^NWERN_", unique(header$ProjectKey), value = TRUE)
+    )
+
+    if (is.null(excluded_project_keys)) {
+      excluded_project_keys <- mandatory_exclusions
+      progress_message(
+        "Using default excluded_project_keys (NWERN_* + CFO_USGS): ",
+        paste(excluded_project_keys, collapse = ", "),
+        verbose = verbose
+      )
+    } else {
+      excluded_project_keys <- unique(c(excluded_project_keys, mandatory_exclusions))
+      progress_message(
+        "Merging user-supplied excluded_project_keys with mandatory exclusions (NWERN_* + CFO_USGS): ",
+        paste(excluded_project_keys, collapse = ", "),
+        verbose = verbose
+      )
+    }
 
     header_filtered <- header |>
       dplyr::filter(ProjectKey %notin% excluded_project_keys)
