@@ -101,7 +101,7 @@ want all plots from a known project without having to enumerate individual
 result <- fetch_ldc_data(
   token        = my_token,
   base_dir     = base_dir,
-  project_keys = "CFO_USGS",
+  project_keys = "Jornada_JERHM",
   write_out    = TRUE,
   verbose      = TRUE
 )
@@ -113,7 +113,7 @@ You can pass multiple projects as a character vector:
 result <- fetch_ldc_data(
   token        = my_token,
   base_dir     = base_dir,
-  project_keys = c("CFO_USGS", "NWERN_Moab"),
+  project_keys = c("Jornada_JERHM", "BLM_AIM"),
   write_out    = TRUE,
   verbose      = TRUE
 )
