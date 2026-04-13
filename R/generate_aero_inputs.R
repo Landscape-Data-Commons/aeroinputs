@@ -254,7 +254,7 @@ generate_aero_inputs <- function(
 
     files_written <- c(
       list.files(gap_location, full.names = TRUE),
-      list.files(output_dir, "*.ini", full.names = TRUE),
+      list.files(output_dir, pattern = "\\.ini$", full.names = TRUE),
       input_data_file
     )
 

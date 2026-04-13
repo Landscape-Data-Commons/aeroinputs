@@ -23,9 +23,13 @@ make_gap_tall <- function(pks = paste0("PK", 1:3)) {
 }
 
 make_height_tall <- function(pks = paste0("PK", 1:3)) {
+  n <- length(pks)
   data.frame(
     PrimaryKey = rep(pks, each = 4),
-    Height     = rep(c(100, 200, 150, 50), times = length(pks)),
+    LineKey    = rep(paste0(pks, "_L1"), each = 4),
+    PointNbr   = rep(1:4, times = n),
+    Height     = rep(c(100, 200, 150, 50), times = n),
+    type       = "woody",
     stringsAsFactors = FALSE
   )
 }
@@ -127,5 +131,5 @@ test_that("generate_aero_inputs writes expected output files when write_out = TR
 
   expect_true(file.exists(file.path(out_dir, "input_data.csv")))
   expect_true(dir.exists(file.path(out_dir,  "gap")))
-  expect_true(dir.exists(file.path(out_dir,  "ini")))
+  expect_gt(length(list.files(out_dir, pattern = "\\.ini$")), 0)
 })
