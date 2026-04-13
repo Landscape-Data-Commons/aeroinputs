@@ -1,0 +1,142 @@
+---
+title: "Generating AERO Inputs"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Generating AERO Inputs}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE   # requires local data files
+)
+```
+
+## Overview
+
+`generate_aero_inputs()` converts the LDC Tall CSVs produced by
+`fetch_ldc_data()` and a soil-texture GeoTIFF from `fetch_solus()` into
+the per-plot files that the AERO wind-erosion model requires:
+
+| Output                  | Description                                     |
+|-------------------------|-------------------------------------------------|
+| `gap/<PK>.txt`          | Canopy gap distances (fraction) for each plot   |
+| `<PK>.ini`              | AERO INI configuration for each plot            |
+| `input_data.csv`        | Combined summary table of all plot inputs       |
+
+## Prerequisites
+
+You need the outputs of both `fetch_ldc_data()` and `fetch_solus()`.
+See the corresponding vignettes for how to produce them.
+
+```
+<base_dir>/
+  Tall/
+    header.csv
+    gap_tall.csv
+    height_tall.csv
+    lpi_tall.csv
+    geoIndicators.csv
+  soil_texture_w_sand_frac.tif   # from fetch_solus()
+```
+
+## Basic usage
+
+```{r basic}
+library(aeroinputs)
+
+base_dir     <- "~/LDC/AERO_test"
+output_dir   <- file.path(base_dir, "aero_inputdata")
+texture_file <- file.path(base_dir, "soil_texture_w_sand_frac.tif")
+
+result <- generate_aero_inputs(
+  data_dir     = base_dir,
+  output_dir   = output_dir,
+  texture_file = texture_file,
+  write_out    = TRUE,
+  verbose      = TRUE
+)
+```
+
+The function returns a list:
+
+| Element        | Description                                         |
+|----------------|-----------------------------------------------------|
+| `input_data`   | Data frame combining texture, bare soil, height, gap |
+| `plots_texture`| Data frame with extracted sand/clay fractions        |
+| `files_written`| Character vector of all paths written to disk        |
+
+## Texture raster requirements
+
+The raster at `texture_file` must have exactly two layers named (or
+containing) `"sand"` and `"clay"`, in **percent** (0-100). The function
+divides by 100 internally before writing fractions to the INI files.
+
+```{r texture-check}
+library(terra)
+
+r <- rast(texture_file)
+names(r)   # should include "sandtotal_0_cm_p" and "claytotal_0_cm_p"
+nlyr(r)    # 2 after subsetting in fetch_solus example
+```
+
+## Inspecting outputs
+
+```{r inspect}
+# Summary table
+head(result$input_data)
+
+# List gap files written
+head(result$files_written)
+
+# Read one INI file
+readLines(file.path(output_dir, result$plots_texture$PK_texture[1]))
+```
+
+## Using write_out = FALSE
+
+Set `write_out = FALSE` to run the pipeline in memory without touching
+disk, for example during development or in unit tests.
+
+```{r no-write}
+result <- generate_aero_inputs(
+  data_dir     = base_dir,
+  texture_file = texture_file,
+  write_out    = FALSE
+)
+
+# input_data is NULL when write_out = FALSE
+is.null(result$input_data)  # TRUE
+nrow(result$plots_texture)  # plots processed
+```
+
+## Complete workflow
+
+```{r workflow}
+# 1. Fetch soil texture raster (once)
+fetch_solus(
+  variables    = c("sandtotal", "claytotal"),
+  depth_slices = 0,
+  output_type  = "prediction",
+  return       = "grid",
+  filename     = texture_file,
+  overwrite    = FALSE
+)
+
+# 2. Fetch LDC data (once)
+fetch_ldc_data(
+  token    = my_token,
+  base_dir = base_dir,
+  n_rec    = 500
+)
+
+# 3. Build AERO inputs
+result <- generate_aero_inputs(
+  data_dir     = base_dir,
+  output_dir   = output_dir,
+  texture_file = texture_file
+)
+```

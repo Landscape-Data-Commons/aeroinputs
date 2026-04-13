@@ -1,0 +1,130 @@
+---
+title: "Fetching SOLUS Soil Texture Rasters"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Fetching SOLUS Soil Texture Rasters}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE   # network calls: not run during R CMD check
+)
+```
+
+## Overview
+
+`fetch_solus()` streams SOLUS 100 soil-property rasters from Google
+Cloud Storage. You can retrieve a full CONUS raster grid, crop it to a
+spatial area of interest, or convert the extracted values to an `aqp`
+`SoilProfileCollection`.
+
+For the AERO workflow you typically need only the `sandtotal` and
+`claytotal` layers at the `0` cm depth slice.
+
+## Basic grid retrieval
+
+```{r grid}
+library(aeroinputs)
+
+base_dir <- "~/LDC/AERO_test"
+outfile  <- file.path(base_dir, "soil_texture_w_sand_frac.tif")
+
+# Download the full SOLUS index and build a streaming raster
+solus_grid <- fetch_solus(return = "grid")
+
+# Subset to the two layers needed for AERO
+soil_texture <- solus_grid[[c("sandtotal_0_cm_p", "claytotal_0_cm_p")]]
+
+# Write to disk (this streams from remote storage - may take a few minutes)
+terra::writeRaster(soil_texture, filename = outfile, overwrite = TRUE)
+```
+
+> **Note:** The full SOLUS raster covers CONUS and can be several GB.
+> Write it to disk once and reuse; do not re-download on every session.
+
+## Requesting specific variables and depths
+
+```{r subset}
+# All available sandtotal depth slices
+sol <- fetch_solus(
+  variables    = "sandtotal",
+  depth_slices = c(0, 5, 15, 30, 60, 100, 150),
+  output_type  = "prediction",
+  return       = "grid"
+)
+terra::names(sol)
+```
+
+## Cropping to an area of interest
+
+Pass any `sf`, `SpatVector`, or `SpatRaster` as `x` to crop the result
+before downloading.
+
+```{r crop}
+library(sf)
+
+# Example: crop to a bounding box in the Colorado Plateau
+aoi <- sf::st_bbox(c(xmin = -112, xmax = -109, ymin = 36, ymax = 38),
+                   crs = 4326) |>
+  sf::st_as_sfc() |>
+  sf::st_as_sf()
+
+sol_crop <- fetch_solus(
+  x            = aoi,
+  variables    = c("sandtotal", "claytotal"),
+  depth_slices = 0,
+  output_type  = "prediction",
+  return       = "grid"
+)
+```
+
+## Extracting a SoilProfileCollection
+
+Set `return = "spc"` to extract raster values at sample points and
+convert them to an `aqp::SoilProfileCollection`.
+
+```{r spc}
+sol_spc <- fetch_solus(
+  x            = aoi,
+  variables    = c("sandtotal", "claytotal", "ph1to1h2o"),
+  depth_slices = c(0, 5, 15, 30, 60, 100),
+  output_type  = "prediction",
+  return       = "spc",
+  samples      = 100,
+  method       = "linear"
+)
+
+aqp::plot(sol_spc, color = "sandtotal_p")
+```
+
+## Available variables
+
+The 20 SOLUS 100 properties currently available:
+
+```
+anylithicdpt  caco3    cec7      claytotal  dbovendry
+ec            ecec     fragvol   gypsum     ph1to1h2o
+resdept       sandco   sandfine  sandmed    sandtotal
+sandvc        sandvf   sar       silttotal  soc
+```
+
+## Interpolation methods
+
+When `return = "spc"`, values are interpolated between depth slices.
+Available methods (from `stats::approxfun` / `stats::splinefun`):
+
+| Method      | Description                       |
+|-------------|-----------------------------------|
+| `"slice"`   | Each depth slice as a 1 cm slice  |
+| `"step"`    | SOLUS native depth intervals      |
+| `"linear"`  | Linear interpolation (recommended)|
+| `"constant"`| Step-function interpolation       |
+| `"fmm"`     | Fritsch-Carlson spline            |
+| `"natural"` | Natural cubic spline              |
+
+Use `method = "slice"` or `"step"` when you want to preserve the raw
+SOLUS predictions without modification.

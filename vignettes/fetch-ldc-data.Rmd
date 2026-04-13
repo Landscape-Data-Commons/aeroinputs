@@ -1,0 +1,140 @@
+---
+title: "Fetching LDC Data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Fetching LDC Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE   # network calls: not run during R CMD check
+)
+```
+
+## Overview
+
+`fetch_ldc_data()` retrieves LDC plot-level datasets from the
+[Landscape Data Commons API](https://landscapedatacommons.org/) and
+writes them as Tall CSV files that feed directly into
+`generate_aero_inputs()`.
+
+The function runs a **dependency chain**: it fetches `gap`, then filters
+the returned PrimaryKeys to fetch `height`, then `lpi`, then `indicators`.
+Only plots present across all datasets are kept in the final output.
+
+## Prerequisites
+
+```{r install, eval = FALSE}
+# Install aeroinputs from GitHub
+# install.packages("pak")
+pak::pkg_install("Landscape-Data-Commons/aeroinputs")
+```
+
+You need LDC API credentials. Store them as environment variables to
+avoid hard-coding credentials in scripts:
+
+```r
+# In your .Renviron (see usethis::edit_r_environ()):
+# API_USERNAME=your_username
+# API_PASSWORD=your_password
+```
+
+## Basic usage
+
+```{r basic}
+library(aeroinputs)
+
+# Obtain an API token
+my_token <- trex::get_ldc_token(
+  username = Sys.getenv("API_USERNAME"),
+  password = Sys.getenv("API_PASSWORD")
+)
+
+base_dir <- "~/LDC/AERO_test"
+
+result <- fetch_ldc_data(
+  token     = my_token,
+  base_dir  = base_dir,
+  n_rec     = 500,   # limit to 500 plots for a quick test
+  n_offset  = 1,
+  write_out = TRUE,
+  verbose   = TRUE
+)
+```
+
+On success `result` is a list:
+
+| Element       | Description                                      |
+|---------------|--------------------------------------------------|
+| `data`        | Named list: `gap`, `height`, `lpi`, `indicators`, `header` |
+| `final_keys`  | Character vector of PrimaryKeys in all tables    |
+| `out_dir`     | Path to the `Tall/` directory where CSVs were written |
+
+## Using pre-selected PrimaryKeys
+
+If you already know which plots you want, pass them via `primary_keys`.
+The `excluded_project_keys` filter is skipped.
+
+```{r keys}
+my_keys <- c("key1", "key2", "key3")
+
+result <- fetch_ldc_data(
+  token        = my_token,
+  primary_keys = my_keys,
+  base_dir     = base_dir,
+  write_out    = TRUE
+)
+```
+
+## Caching the header
+
+The full LDC header table (~65 k rows) is cached as an `.RData` file
+at `header_cache_file`. On subsequent calls the cache is loaded instead
+of hitting the API again, saving ~30 seconds per run.
+
+```{r cache}
+# Force a fresh header download by deleting the cache:
+# file.remove(file.path(base_dir, "header.RData"))
+
+result <- fetch_ldc_data(
+  token             = my_token,
+  base_dir          = base_dir,
+  header_cache_file = file.path(base_dir, "header.RData"),
+  write_out         = TRUE
+)
+```
+
+## Logging non-public keys
+
+When the API returns non-public data warnings, the offending PrimaryKeys
+are appended to `nonpublic_file` (a CSV). Set `nonpublic_file = NULL` to
+silence logging.
+
+```{r log}
+result <- fetch_ldc_data(
+  token          = my_token,
+  base_dir       = base_dir,
+  nonpublic_file = file.path(base_dir, "nonpublic.csv"),
+  write_out      = TRUE
+)
+```
+
+## Output files
+
+When `write_out = TRUE`, the following files are created under `out_dir`
+(`<base_dir>/Tall/` by default):
+
+```
+Tall/
+  header.csv
+  gap_tall.csv
+  height_tall.csv
+  lpi_tall.csv
+  geoIndicators.csv
+```
+
+These files are the required inputs for `generate_aero_inputs()`.
