@@ -6,7 +6,7 @@
 #' disk. The outputs feed directly into [generate_aero_inputs()].
 #'
 #' @param token Optional LDC token (character) passed to `trex::fetch_ldc()`.
-#'   When `NULL`, trex will attempt default authentication.
+#'   When `FALSE`, trex will attempt default authentication.
 #' @param primary_keys Optional character vector of `PrimaryKey`s to use
 #'   directly. When supplied, `excluded_project_keys` and `project_keys` are
 #'   ignored. The header is still loaded/fetched (using the cache if available)
@@ -47,7 +47,7 @@
 #' @seealso [generate_aero_inputs()], [fetch_solus()]
 #' @export
 fetch_ldc_data <- function(
-  token = NULL,
+  token = FALSE,
   primary_keys = NULL,
   project_keys = NULL,
   excluded_project_keys = NULL,
@@ -58,7 +58,8 @@ fetch_ldc_data <- function(
   out_dir = file.path(base_dir, "Tall"),
   header_cache_file = file.path(base_dir, "header.RData"),
   nonpublic_file = file.path(out_dir, "nonpublic_primarykeys.csv"),
-  base_url = "https://devapi.landscapedatacommons.org/api/v1/",
+  base_url = "https://api.landscapedatacommons.org/api/v1/",
+  #base_url = "https://devapi.landscapedatacommons.org/api/v1/",
   write_out = TRUE,
   verbose = TRUE
 ) {
@@ -342,7 +343,8 @@ fetch_dataset <- function(data_type, keys, token = NULL, nonpublic_log = NULL,
       keys      = keys,
       key_type  = "PrimaryKey",
       token     = token,
-      base_url  = base_url
+      base_url  = base_url,
+      verbose   = TRUE
     ),
     warning = function(w) {
       newly_found <- extract_nonpublic_keys(conditionMessage(w))
