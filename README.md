@@ -47,7 +47,7 @@ fetch_solus(
 
 # 2. Set keyring to get API token if you need to get access to non-public data
 # Run once per machine to store credentials securely
-username"your_email@example.com"
+username <- "your_email@example.com"
 trex::setup_keyring(username)
 trex::store_password(username)
 # Otherwise, set username as NULL for access only public data
