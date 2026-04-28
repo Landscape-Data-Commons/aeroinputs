@@ -53,11 +53,11 @@ trex::store_password(username)
 # Otherwise, set username as NULL for access only public data
 username <- NULL
 
-# 3. Fetch LDC plot data (retrieve the first 200 records for a quick test)
+# 3. Fetch LDC plot data (retrieve for all plots for project Jornada_JERHM)
 fetch_ldc_data(
   username  = username,
   base_dir  = base_dir,
-  n_rec     = 200,
+  project_keys = "Jornada_JERHM",
   write_out = TRUE
 )
 

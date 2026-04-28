@@ -312,7 +312,7 @@ fetch_ldc_data <- function(
     t0 <- Sys.time()
     
     header <- trex::fetch_ldc(data_type = "header", username = username, token = !is.null(username),
-      verbose = TRUE, base_url = base_url)
+      verbose = FALSE, base_url = base_url)
     progress_message("Header fetched in ", format_elapsed_time(t0), verbose = verbose)
     save(header, file = cache_file)
   } else {
