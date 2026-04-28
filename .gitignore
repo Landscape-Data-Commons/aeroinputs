@@ -39,3 +39,5 @@ Thumbs.db
 
 /.quarto/
 **/*.quarto_ipynb
+/doc/
+/Meta/

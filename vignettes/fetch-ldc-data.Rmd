@@ -34,33 +34,30 @@ Only plots present across all datasets are kept in the final output.
 pak::pkg_install("Landscape-Data-Commons/aeroinputs")
 ```
 
-You need LDC API credentials. Store them as environment variables to
-avoid hard-coding credentials in scripts:
+You need LDC API credentials to access non-public data. Use 'trex::setup_keyring()' to store them securely in your system keyring. This only needs to be done once per user account and will allow you to access the API without hardcoding credentials in your scripts:
 
 ```r
-# In your .Renviron (see usethis::edit_r_environ()):
-# API_USERNAME=your_username
-# API_PASSWORD=your_password
+username <- "your_email@example.com"
+# Set up keyring, a prompt will ask you to enter your password securely
+trex::setup_keyring(username)
+# Store your password in the keyring (you will be prompted to enter it)
+trex::store_password(username)
 ```
+
+If you only want to access public data, you can skip this step and pass `username = NULL` to `fetch_ldc_data()`. However, note that some projects are restricted by default and will not be included in the results unless explicitly requested (see below).
 
 ## Basic usage
 
 ```{r basic}
 library(aeroinputs)
 
-# Obtain an API token
-my_token <- trex::get_ldc_token(
-  username = Sys.getenv("API_USERNAME"),
-  password = Sys.getenv("API_PASSWORD")
-)
-
+username <- "your_email@example.com"
 base_dir <- "~/LDC/AERO_test"
 
 result <- fetch_ldc_data(
-  token     = my_token,
+  username  = username,
   base_dir  = base_dir,
-  n_rec     = 500,   # limit to 500 plots for a quick test
-  n_offset  = 1,
+  n_rec     = 200,   # limit to 200 plots for a quick test
   write_out = TRUE,
   verbose   = TRUE
 )
@@ -83,7 +80,7 @@ The `excluded_project_keys` filter is skipped.
 my_keys <- c("key1", "key2", "key3")
 
 result <- fetch_ldc_data(
-  token        = my_token,
+  username     = username,
   primary_keys = my_keys,
   base_dir     = base_dir,
   write_out    = TRUE
@@ -99,11 +96,10 @@ want all plots from a known project without having to enumerate individual
 
 ```{r project-keys}
 result <- fetch_ldc_data(
-  token        = my_token,
+  username     = username,
   base_dir     = base_dir,
   project_keys = "Jornada_JERHM",
-  write_out    = TRUE,
-  verbose      = TRUE
+  write_out    = TRUE
 )
 ```
 
@@ -111,11 +107,10 @@ You can pass multiple projects as a character vector:
 
 ```{r project-keys-multi}
 result <- fetch_ldc_data(
-  token        = my_token,
+  username     = username,
   base_dir     = base_dir,
   project_keys = c("Jornada_JERHM", "BLM_AIM"),
-  write_out    = TRUE,
-  verbose      = TRUE
+  write_out    = TRUE
 )
 ```
 
@@ -138,11 +133,10 @@ priority table below).
 ```{r restricted}
 # This will work: project_keys bypasses the default exclusion
 result <- fetch_ldc_data(
-  token        = my_token,
+  username     = username,
   base_dir     = base_dir,
   project_keys = "CFO_USGS",   # explicitly requested: exclusion is bypassed
-  write_out    = TRUE,
-  verbose      = TRUE
+  write_out    = TRUE
 )
 ```
 
@@ -182,7 +176,7 @@ of hitting the API again, saving ~30 seconds per run.
 # file.remove(file.path(base_dir, "header.RData"))
 
 result <- fetch_ldc_data(
-  token             = my_token,
+  username          = username,
   base_dir          = base_dir,
   header_cache_file = file.path(base_dir, "header.RData"),
   write_out         = TRUE
@@ -197,7 +191,7 @@ silence logging.
 
 ```{r log}
 result <- fetch_ldc_data(
-  token          = my_token,
+  username       = username,
   base_dir       = base_dir,
   nonpublic_file = file.path(base_dir, "nonpublic.csv"),
   write_out      = TRUE

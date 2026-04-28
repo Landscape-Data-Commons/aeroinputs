@@ -35,13 +35,7 @@ library(aeroinputs)
 base_dir <- "~/LDC/AERO_test"
 texture_file <- file.path(base_dir, "soil_texture_w_sand_frac.tif")
 
-# 1. Get API token (credentials stored in .Renviron)
-my_token <- trex::get_ldc_token(
-  username = Sys.getenv("API_USERNAME"),
-  password = Sys.getenv("API_PASSWORD")
-)
-
-# 2. Fetch soil texture raster (only needed once)
+# 1. Fetch soil texture raster (only needed once)
 fetch_solus(
   variables    = c("sandtotal", "claytotal"),
   depth_slices = 0,
@@ -51,11 +45,19 @@ fetch_solus(
   overwrite    = FALSE
 )
 
-# 3. Fetch LDC plot data
+# 2. Set keyring to get API token if you need to get access to non-public data
+# Run once per machine to store credentials securely
+username"your_email@example.com"
+trex::setup_keyring(username)
+trex::store_password(username)
+# Otherwise, set username as NULL for access only public data
+username <- NULL
+
+# 3. Fetch LDC plot data (retrieve the first 200 records for a quick test)
 fetch_ldc_data(
-  token     = my_token,
+  username  = username,
   base_dir  = base_dir,
-  n_rec     = 500,
+  n_rec     = 200,
   write_out = TRUE
 )
 
@@ -68,14 +70,9 @@ result <- generate_aero_inputs(
 ```
 
 ## API credentials
-Credentials are read from environment variables. Add them to your
-`~/.Renviron` (use `usethis::edit_r_environ()`) and **never commit them
-to version control**:
-
-```
-API_USERNAME=your_username
-API_PASSWORD=your_password
-```
+Use `trex::setup_keyring()` to securely store your API credentials in your
+system keyring. This avoids keeping secrets in plain text files like
+`~/.Renviron`.
 
 ## Output structure
 

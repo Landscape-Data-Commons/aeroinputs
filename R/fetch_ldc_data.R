@@ -1,12 +1,11 @@
 #' Fetch LDC datasets for AERO input preparation
 #'
-#' Retrieves LDC datasets in a dependency chain (e.g. `gap -> height -> lpi ->
-#' indicators`), filters to plots with a `BareSoil` value, aligns all tables to
+#' Retrieves LDC datasets in a dependency chain 
+#' (e.g. `gap -> height -> lpi -> indicators`), 
+#' filters to plots with a `BareSoil` value, aligns all tables to
 #' the common set of `PrimaryKey`s, and optionally writes "Tall" CSV files to
 #' disk. The outputs feed directly into [generate_aero_inputs()].
 #'
-#' @param token Optional LDC token (character) passed to `trex::fetch_ldc()`.
-#'   When `FALSE`, trex will attempt default authentication.
 #' @param primary_keys Optional character vector of `PrimaryKey`s to use
 #'   directly. When supplied, `excluded_project_keys` and `project_keys` are
 #'   ignored. The header is still loaded/fetched (using the cache if available)
@@ -34,6 +33,10 @@
 #' @param base_url Base API URL passed to `trex::fetch_ldc()`.
 #' @param write_out Logical; write CSV outputs to disk when `TRUE`.
 #' @param verbose Logical; emit progress messages when `TRUE`.
+#' @param username Optional LDC username (character) passed to `trex::fetch_ldc()`.
+#'   The username should used within trex::setup_keyring()
+#'   When `NULL`, trex will attempt default authentication. 
+#'   
 #'
 #' @return A named list with elements:
 #'   \describe{
@@ -47,7 +50,6 @@
 #' @seealso [generate_aero_inputs()], [fetch_solus()]
 #' @export
 fetch_ldc_data <- function(
-  token = FALSE,
   primary_keys = NULL,
   project_keys = NULL,
   excluded_project_keys = NULL,
@@ -59,9 +61,9 @@ fetch_ldc_data <- function(
   header_cache_file = file.path(base_dir, "header.RData"),
   nonpublic_file = file.path(out_dir, "nonpublic_primarykeys.csv"),
   base_url = "https://api.landscapedatacommons.org/api/v1/",
-  #base_url = "https://devapi.landscapedatacommons.org/api/v1/",
   write_out = TRUE,
-  verbose = TRUE
+  verbose = TRUE,
+  username = NULL
 ) {
   start_time <- Sys.time()
   on.exit(
@@ -76,6 +78,12 @@ fetch_ldc_data <- function(
 
   dir.create(base_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(out_dir,  recursive = TRUE, showWarnings = FALSE)
+
+  if (is.null(username)) {
+    progress_message("No username provided; using default trex authentication.", verbose = verbose)
+  } else {
+    progress_message("Using provided username for authentication: ", username, verbose = verbose)
+  }
 
   # ---- Header: load from cache or fetch from API ----------------------------
 
@@ -97,7 +105,7 @@ fetch_ldc_data <- function(
     } else {
       length(primary_keys)
     }
-    header <- .load_or_fetch_header(header_cache_file, token, base_url, verbose)
+    header <- .load_or_fetch_header(header_cache_file, username, base_url, verbose)
 
     stopifnot(all(c("ProjectKey", "PrimaryKey") %in% names(header)))
     header <- header |>
@@ -121,7 +129,7 @@ fetch_ldc_data <- function(
       stop("No valid project_keys provided after removing NAs and duplicates.")
     }
 
-    header <- .load_or_fetch_header(header_cache_file, token, base_url, verbose)
+    header <- .load_or_fetch_header(header_cache_file, username, base_url, verbose)
     stopifnot(all(c("ProjectKey", "PrimaryKey") %in% names(header)))
 
     header <- header |>
@@ -147,7 +155,7 @@ fetch_ldc_data <- function(
   } else {
     # Normal path: load/fetch header then apply project key exclusion.
     # Default exclusion: all NWERN_* projects and CFO_USGS.
-    header <- .load_or_fetch_header(header_cache_file, token, base_url, verbose)
+    header <- .load_or_fetch_header(header_cache_file, username, base_url, verbose)
     stopifnot(all(c("ProjectKey", "PrimaryKey") %in% names(header)))
 
     mandatory_exclusions <- c(
@@ -223,7 +231,7 @@ fetch_ldc_data <- function(
   chain_res <- fetch_chain(
     chain         = chain_types,
     start_keys    = primary_keys,
-    token         = token,
+    username      = username,
     nonpublic_log = nonpublic_file,
     base_url      = base_url,
     verbose       = verbose
@@ -293,17 +301,18 @@ fetch_ldc_data <- function(
 #' Load header from cache or fetch it from the LDC API
 #'
 #' @param cache_file Path to the `.RData` cache.
-#' @param token      API token (may be `NULL`).
+#' @param username   API username (may be `NULL`).
 #' @param base_url   LDC API base URL.
 #' @param verbose    Passed to [progress_message()].
 #' @return A data frame of header records.
 #' @keywords internal
-.load_or_fetch_header <- function(cache_file, token, base_url, verbose) {
+.load_or_fetch_header <- function(cache_file, username, base_url, verbose) {
   if (!file.exists(cache_file)) {
     progress_message("Header cache not found; fetching header from LDC...", verbose = verbose)
-    t0     <- Sys.time()
-    header <- trex::fetch_ldc(data_type = "header", token = token, 
-      verbose = verbose, base_url = base_url)
+    t0 <- Sys.time()
+    
+    header <- trex::fetch_ldc(data_type = "header", username = username, token = !is.null(username),
+      verbose = TRUE, base_url = base_url)
     progress_message("Header fetched in ", format_elapsed_time(t0), verbose = verbose)
     save(header, file = cache_file)
   } else {
@@ -320,14 +329,14 @@ fetch_ldc_data <- function(
 #'
 #' @param data_type     Name of the dataset (e.g. `"gap"`).
 #' @param keys          Character vector of `PrimaryKey`s to request.
-#' @param token         API token (may be `NULL`).
+#' @param username      API username (may be `NULL`).
 #' @param nonpublic_log Path to a CSV log file (may be `NULL`).
 #' @param base_url      LDC API base URL.
 #' @param verbose       Passed to [progress_message()].
 #' @return A named list with elements `data` (data frame) and `keys`
 #'   (character vector of unique `PrimaryKey`s present in the response).
 #' @keywords internal
-fetch_dataset <- function(data_type, keys, token = NULL, nonpublic_log = NULL, 
+fetch_dataset <- function(data_type, keys, username = NULL, nonpublic_log = NULL, 
   base_url = NULL, verbose = TRUE) 
 {
   if (length(keys) == 0) {
@@ -340,11 +349,12 @@ fetch_dataset <- function(data_type, keys, token = NULL, nonpublic_log = NULL,
   dat <- withCallingHandlers(
     trex::fetch_ldc(
       data_type = data_type,
-      keys      = keys,
+      query_parameters = list(PrimaryKey = list("equals" = keys)),
       key_type  = "PrimaryKey",
-      token     = token,
+      username  = username,
+      token     = !is.null(username),
       base_url  = base_url,
-      verbose   = TRUE
+      verbose   = FALSE
     ),
     warning = function(w) {
       newly_found <- extract_nonpublic_keys(conditionMessage(w))
@@ -392,14 +402,14 @@ fetch_dataset <- function(data_type, keys, token = NULL, nonpublic_log = NULL,
 #'
 #' @param chain         Character vector of dataset names in fetch order.
 #' @param start_keys    Character vector of starting `PrimaryKey`s.
-#' @param token         API token (may be `NULL`).
+#' @param username      API username (may be `NULL`).
 #' @param nonpublic_log Path to a non-public key log CSV (may be `NULL`).
 #' @param base_url      LDC API base URL.
 #' @param verbose       Passed to [progress_message()].
 #' @return A named list with elements `data` (named list of data frames) and
 #'   `final_keys` (character vector).
 #' @keywords internal
-fetch_chain <- function(chain, start_keys, token = NULL, nonpublic_log = NULL, 
+fetch_chain <- function(chain, start_keys, username = NULL, nonpublic_log = NULL, 
   base_url = NULL, verbose = TRUE) 
 {
   out  <- list()
@@ -423,12 +433,12 @@ fetch_chain <- function(chain, start_keys, token = NULL, nonpublic_log = NULL,
     res <- fetch_dataset(
       data_type     = dt,
       keys          = keys,
-      token         = token,
+      username      = username,
       nonpublic_log = nonpublic_log,
       base_url      = base_url,
       verbose       = verbose
     )
-
+ 
     out[[dt]] <- res$data
     keys      <- res$keys
 
