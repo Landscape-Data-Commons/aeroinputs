@@ -1,6 +1,6 @@
 Package: aeroinputs
 Title: Prepare AERO Wind Erosion Model Inputs from LDC and SOLUS Data
-Version: 0.1.0
+Version: 1.0.0
 Authors@R: 
     c(
         person("Geovany", "Ramirez", , "georam@nmsu.edu", role = c("aut", "cre")),
