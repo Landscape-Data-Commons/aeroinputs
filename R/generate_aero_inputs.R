@@ -145,19 +145,49 @@ generate_aero_inputs <- function(
       clay = clay / 100
     )
 
-  # Reproject coordinates to WGS84 for the AERO wind_location field
-  sf_tex <- sf::st_as_sf(
-    plots_texture,
-    coords = c("Longitude_NAD83", "Latitude_NAD83"),
-    crs    = terra::crs(tex_stack),
-    remove = FALSE
-  ) |> sf::st_transform(4326)
+  # Reproject point geometry (built from NAD83 lon/lat) to WGS84
+  sf_tex <- sf_pts |>
+    dplyr::semi_join(plots_texture |> dplyr::select(PrimaryKey), by = "PrimaryKey") |>
+    sf::st_transform(4326)
 
-  # Overwrite Lon/Lat columns with WGS84 values
-  wgs84_coords    <- sf::st_coordinates(sf_tex)
-  plots_texture   <- sf::st_drop_geometry(sf_tex)
-  plots_texture$Longitude_WGS84 <- wgs84_coords[, 1]
-  plots_texture$Latitude_WGS84  <- wgs84_coords[, 2]
+  # Extract WGS84 coordinates from geometry and join back to attributes
+  wgs84_coords <- sf::st_coordinates(sf_tex)
+  wgs84_lookup <- tibble::tibble(
+    PrimaryKey      = sf_tex$PrimaryKey,
+    Longitude_WGS84 = wgs84_coords[, 1],
+    Latitude_WGS84  = wgs84_coords[, 2]
+  )
+
+  # Safeguard: fail if a PrimaryKey maps to multiple coordinate pairs
+  coord_conflicts <- wgs84_lookup |>
+    dplyr::summarise(
+      n_coords = dplyr::n_distinct(
+        paste0(round(Longitude_WGS84, 10), ",", round(Latitude_WGS84, 10))
+      ),
+      .by = PrimaryKey
+    ) |>
+    dplyr::filter(n_coords > 1)
+
+  if (nrow(coord_conflicts) > 0) {
+    bad_keys <- coord_conflicts$PrimaryKey
+    bad_keys_msg <- paste(utils::head(bad_keys, 10), collapse = ", ")
+    if (length(bad_keys) > 10) {
+      bad_keys_msg <- paste0(bad_keys_msg, ", ...")
+    }
+
+    stop(
+      "Some PrimaryKey values map to multiple WGS84 coordinate pairs: ",
+      bad_keys_msg,
+      ". Resolve duplicated coordinates before proceeding."
+    )
+  }
+
+  plots_texture <- plots_texture |>
+    dplyr::left_join(
+      wgs84_lookup |>
+        dplyr::distinct(PrimaryKey, .keep_all = TRUE),
+      by = "PrimaryKey"
+    )
 
   # Placeholder column required by downstream AERO logic
   plots_texture$SoilTexture <- NA_character_
