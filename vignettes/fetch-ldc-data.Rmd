@@ -209,7 +209,11 @@ Tall/
   gap_tall.csv
   height_tall.csv
   lpi_tall.csv
-  geoIndicators.csv
+  geoIndicators.csv   # retained for archival; no longer required by generate_aero_inputs()
 ```
 
-These files are the required inputs for `generate_aero_inputs()`.
+`header.csv`, `gap_tall.csv`, `height_tall.csv`, and `lpi_tall.csv` are the
+required inputs for `generate_aero_inputs()`. Bare-soil cover is now derived
+directly from `lpi_tall.csv` via `terradactyl::pct_cover()`, so
+`geoIndicators.csv` is written for reference only and may be removed in a
+future release.

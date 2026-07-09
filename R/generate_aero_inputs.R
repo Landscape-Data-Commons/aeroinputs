@@ -1,15 +1,15 @@
 #' Build AERO input files from LDC "Tall" exports and a soil texture raster
 #'
-#' Converts LDC tall tables (`gap`, `height`, `lpi`, `header`,
-#' `geoIndicators`) and a soil-texture raster into the AERO-ready inputs:
-#' per-plot gap `.txt` files, `.ini` configuration files, and a combined
-#' `input_data.csv` summary. Spatial operations use `terra` and `sf`
+#' Converts LDC tall tables (`gap`, `height`, `lpi`, `header`) and a
+#' soil-texture raster into the AERO-ready inputs: per-plot gap `.txt` files,
+#' `.ini` configuration files, and a combined `input_data.csv` summary.
+#' Bare-soil cover is derived directly from `lpi_tall.csv` via
+#' [terradactyl::pct_bareground()]. Spatial operations use `terra` and `sf`
 #' throughout (no legacy `raster`/`sp` dependency).
 #'
 #' @param data_dir    Directory that contains a `Tall/` sub-folder with the
-#'   five CSV files produced by [fetch_ldc_data()]:
-#'   `header.csv`, `gap_tall.csv`, `height_tall.csv`, `lpi_tall.csv`, and
-#'   `geoIndicators.csv`.
+#'   four CSV files produced by [fetch_ldc_data()]:
+#'   `header.csv`, `gap_tall.csv`, `height_tall.csv`, and `lpi_tall.csv`.
 #' @param output_dir  Directory where output files are written. Defaults to
 #'   `file.path(data_dir, "aero_inputdata")`.
 #' @param texture_file Path to a single-file or multi-layer GeoTIFF whose
@@ -22,7 +22,8 @@
 #' @return A named list with elements:
 #'   \describe{
 #'     \item{`input_data`}{A data frame combining plot texture, bare-soil
-#'       fraction, maximum height, and canopy gap per plot (or `NULL` when
+#'       fraction (derived from `lpi_tall` via [terradactyl::pct_cover()]),
+#'       maximum height, and canopy gap per plot (or `NULL` when
 #'       `write_out = FALSE`).}
 #'     \item{`plots_texture`}{A data frame of plot coordinates with extracted
 #'       sand/clay fractions.}
@@ -59,8 +60,7 @@ generate_aero_inputs <- function(
     header = file.path(data_dir, "Tall", "header.csv"),
     gap    = file.path(data_dir, "Tall", "gap_tall.csv"),
     height = file.path(data_dir, "Tall", "height_tall.csv"),
-    lpi    = file.path(data_dir, "Tall", "lpi_tall.csv"),
-    geoind = file.path(data_dir, "Tall", "geoIndicators.csv")
+    lpi    = file.path(data_dir, "Tall", "lpi_tall.csv")
   )
 
   missing_files <- names(files)[!file.exists(unlist(files))]
@@ -77,8 +77,7 @@ generate_aero_inputs <- function(
   header      <- readr::read_csv(files$header, show_col_types = FALSE)
   gap_tall    <- readr::read_csv(files$gap,    show_col_types = FALSE)
   height_tall <- readr::read_csv(files$height, show_col_types = FALSE)
-  lpi_tall    <- readr::read_csv(files$lpi,    show_col_types = FALSE)  # nolint (lpi_tall reserved for future use)
-  geoind      <- readr::read_csv(files$geoind, show_col_types = FALSE)
+  lpi_tall    <- readr::read_csv(files$lpi,    show_col_types = FALSE)
 
   # Drop plots without coordinates
   header <- header |>
@@ -203,8 +202,14 @@ generate_aero_inputs <- function(
     tall        = TRUE
   ) |> dplyr::mutate(max_height = max_height / 100)
 
-  # Bare-soil fraction from geoIndicators
-  bare_soil <- geoind |> dplyr::select(PrimaryKey, BareSoil)
+  # Bare-soil fraction derived from lpi_tall (first-hit "S" codes)
+  bare_soil <- terradactyl::pct_cover(
+    lpi_tall,
+    tall                = FALSE,
+    hit                 = "first",
+    indicator_variables = "code"
+  ) |>
+    dplyr::select(PrimaryKey, BareSoil = S)
 
   # Canopy gap distances (fraction) from gap_tall
   canopy_gap <- gap_tall |>

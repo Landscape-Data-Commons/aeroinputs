@@ -39,7 +39,6 @@ See the corresponding vignettes for how to produce them.
     gap_tall.csv
     height_tall.csv
     lpi_tall.csv
-    geoIndicators.csv
   soil_texture_w_sand_frac.tif   # from fetch_solus()
 ```
 

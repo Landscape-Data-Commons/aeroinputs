@@ -276,6 +276,10 @@ fetch_ldc_data <- function(
     readr::write_csv(gap,            file.path(out_dir, "gap_tall.csv"))
     readr::write_csv(height,         file.path(out_dir, "height_tall.csv"))
     readr::write_csv(lpi,            file.path(out_dir, "lpi_tall.csv"))
+    # NOTE: geoIndicators.csv is retained here for backwards compatibility and
+    # archival purposes, but is no longer required by generate_aero_inputs().
+    # Bare-soil cover is now derived directly from lpi_tall.csv via
+    # terradactyl::pct_cover(). This file may be removed in a future release.
     readr::write_csv(geo_indicators, file.path(out_dir, "geoIndicators.csv"))
     readr::write_csv(header_aero,    file.path(out_dir, "header.csv"))
     progress_message("Wrote outputs to: ", out_dir, verbose = verbose)

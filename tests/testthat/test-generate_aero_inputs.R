@@ -34,10 +34,15 @@ make_height_tall <- function(pks = paste0("PK", 1:3)) {
   )
 }
 
-make_geoind <- function(pks = paste0("PK", 1:3)) {
+make_lpi_tall <- function(pks = paste0("PK", 1:3)) {
+  # Two points per plot; one "S" (bare soil) and one "PF" (perennial forb) hit
+  # pct_cover(..., hit = "first") will yield 50 % BareSoil for every plot
   data.frame(
-    PrimaryKey = pks,
-    BareSoil   = c(30, 40, 50),
+    PrimaryKey = rep(pks, each = 2),
+    LineKey    = rep(paste0(pks, "_L1"), each = 2),
+    PointNbr   = rep(1:2, times = length(pks)),
+    layer      = "SoilSurface",
+    code       = rep(c("S", "PF"), times = length(pks)),
     stringsAsFactors = FALSE
   )
 }
@@ -50,12 +55,7 @@ write_tall_csvs <- function(dir, n = 3) {
   readr::write_csv(make_header(n),      file.path(tall, "header.csv"))
   readr::write_csv(make_gap_tall(pks),  file.path(tall, "gap_tall.csv"))
   readr::write_csv(make_height_tall(pks), file.path(tall, "height_tall.csv"))
-  # lpi_tall is read but not yet used in the pipeline beyond filtering
-  readr::write_csv(
-    data.frame(PrimaryKey = pks, Cover = 50, stringsAsFactors = FALSE),
-    file.path(tall, "lpi_tall.csv")
-  )
-  readr::write_csv(make_geoind(pks),    file.path(tall, "geoIndicators.csv"))
+  readr::write_csv(make_lpi_tall(pks),    file.path(tall, "lpi_tall.csv"))
   invisible(tall)
 }
 
