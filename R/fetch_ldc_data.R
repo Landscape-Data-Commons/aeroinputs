@@ -1,10 +1,13 @@
 #' Fetch LDC datasets for AERO input preparation
 #'
-#' Retrieves LDC datasets in a dependency chain 
-#' (e.g. `gap -> height -> lpi -> indicators`), 
-#' filters to plots with a `BareSoil` value, aligns all tables to
-#' the common set of `PrimaryKey`s, and optionally writes "Tall" CSV files to
-#' disk. The outputs feed directly into [generate_aero_inputs()].
+#' Retrieves LDC datasets in a dependency chain
+#' (e.g. `gap -> height -> lpi -> indicators`),
+#' filters to plots with a `BareSoil` value to define the common set of
+#' `PrimaryKey`s, aligns all tables to those keys, and optionally writes
+#' four "Tall" CSV files to disk (`header.csv`, `gap_tall.csv`,
+#' `height_tall.csv`, `lpi_tall.csv`). The outputs feed directly into
+#' [generate_aero_inputs()], which derives bare-soil cover from `lpi_tall`
+#' via [terradactyl::pct_cover()].
 #'
 #' @param primary_keys Optional character vector of `PrimaryKey`s to use
 #'   directly. When supplied, `excluded_project_keys` and `project_keys` are
@@ -273,15 +276,10 @@ fetch_ldc_data <- function(
 
   if (write_out) {
     dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-    readr::write_csv(gap,            file.path(out_dir, "gap_tall.csv"))
-    readr::write_csv(height,         file.path(out_dir, "height_tall.csv"))
-    readr::write_csv(lpi,            file.path(out_dir, "lpi_tall.csv"))
-    # NOTE: geoIndicators.csv is retained here for backwards compatibility and
-    # archival purposes, but is no longer required by generate_aero_inputs().
-    # Bare-soil cover is now derived directly from lpi_tall.csv via
-    # terradactyl::pct_cover(). This file may be removed in a future release.
-    readr::write_csv(geo_indicators, file.path(out_dir, "geoIndicators.csv"))
-    readr::write_csv(header_aero,    file.path(out_dir, "header.csv"))
+    readr::write_csv(gap,         file.path(out_dir, "gap_tall.csv"))
+    readr::write_csv(height,      file.path(out_dir, "height_tall.csv"))
+    readr::write_csv(lpi,         file.path(out_dir, "lpi_tall.csv"))
+    readr::write_csv(header_aero, file.path(out_dir, "header.csv"))
     progress_message("Wrote outputs to: ", out_dir, verbose = verbose)
   }
 

@@ -24,9 +24,7 @@ pin drops where the first-hit code is `"S"` (soil surface) are counted,
 and the resulting percentage is renamed `BareSoil`. The `veg_cover_fraction`
 written to each `.ini` file is then `(100 - BareSoil) / 100`.
 
-`fetch_ldc_data()` still writes a `geoIndicators.csv` file for archival
-purposes, but that file is **no longer read by `generate_aero_inputs()`**.
-The four required input files are now:
+The four required input files produced by `fetch_ldc_data()` are:
 
 ```
 Tall/
@@ -162,6 +160,14 @@ system keyring. More information on using the keyring can be found in the
 
 ## Changelog
 
+### 2026-07-13 — `geoIndicators.csv` removed from pipeline output
+
+`fetch_ldc_data()` no longer writes `geoIndicators.csv`. The `indicators`
+fetch step is still run internally to identify the set of plots with a valid
+`BareSoil` value (used to define the common `PrimaryKey`s), but the result
+is not written to disk. `generate_aero_inputs()` derives bare-soil cover
+directly from `lpi_tall.csv` and has never required this file.
+
 ### 2026-07-09 — Bare-soil source moved from `geoIndicators` to `lpi_tall`
 
 Previously, `generate_aero_inputs()` read `BareSoil` from
@@ -176,9 +182,7 @@ present in `lpi_tall.csv`.
   `terradactyl::pct_cover(lpi_tall, hit = "first", indicator_variables = "code")`
   and selects the `S` column (first-hit soil-surface codes) as `BareSoil`.
   This matches the definition used by `terradactyl::pct_bareground()`.
-- The required input file count drops from five to four. `geoIndicators.csv`
-  is still written by `fetch_ldc_data()` for archival purposes but is not
-  validated or read during input generation.
+- The required input file count drops from five to four.
 - Tests were updated: the `make_geoind()` fixture was replaced with
   `make_lpi_tall()`, which produces a minimal tall LPI table with a `code`
   column containing `"S"` (bare soil) and `"PF"` (perennial forb) hits.
