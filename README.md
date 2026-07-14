@@ -12,6 +12,7 @@ end-to-end pipeline:
 | `fetch_solus()` | Download SOLUS 100 soil-property rasters from cloud storage |
 | `fetch_ldc_data()` | Fetch LDC plot-level datasets (tall tables for gap, height, lpi, and indicators) |
 | `generate_aero_inputs()` | Build per-plot gap `.txt`, `.ini`, and `input_data.csv` for AERO |
+| `compare_aero_outputs()` | Compare `.ini` and gap `.txt` files between two pipeline runs to validate changes |
 
 ### How bare-soil cover is calculated
 
