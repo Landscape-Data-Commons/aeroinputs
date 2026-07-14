@@ -12,6 +12,27 @@ end-to-end pipeline:
 | `fetch_solus()` | Download SOLUS 100 soil-property rasters from cloud storage |
 | `fetch_ldc_data()` | Fetch LDC plot-level datasets (tall tables for gap, height, lpi, and indicators) |
 | `generate_aero_inputs()` | Build per-plot gap `.txt`, `.ini`, and `input_data.csv` for AERO |
+| `compare_aero_outputs()` | Compare `.ini` and gap `.txt` files between two pipeline runs to validate changes |
+
+### How bare-soil cover is calculated
+
+`generate_aero_inputs()` requires a `veg_cover_fraction` value for each
+plot, which it derives from the **bare-soil cover percentage**. This value
+is calculated directly from `lpi_tall.csv` using
+`terradactyl::pct_cover(..., hit = "first", indicator_variables = "code")`:
+pin drops where the first-hit code is `"S"` (soil surface) are counted,
+and the resulting percentage is renamed `BareSoil`. The `veg_cover_fraction`
+written to each `.ini` file is then `(100 - BareSoil) / 100`.
+
+The four required input files produced by `fetch_ldc_data()` are:
+
+```
+Tall/
+  header.csv
+  gap_tall.csv
+  height_tall.csv
+  lpi_tall.csv
+```
 
 ## Installation
 
@@ -137,4 +158,32 @@ system keyring. More information on using the keyring can be found in the
 | `vignette("fetch-ldc-data",        package = "aeroinputs")` | Fetch LDC datasets |
 | `vignette("generate-aero-inputs",  package = "aeroinputs")` | Build AERO inputs |
 
+## Changelog
+
+### 2026-07-13 — `geoIndicators.csv` removed from pipeline output
+
+`fetch_ldc_data()` no longer writes `geoIndicators.csv`. The `indicators`
+fetch step is still run internally to identify the set of plots with a valid
+`BareSoil` value (used to define the common `PrimaryKey`s), but the result
+is not written to disk. `generate_aero_inputs()` derives bare-soil cover
+directly from `lpi_tall.csv` and has never required this file.
+
+### 2026-07-09 — Bare-soil source moved from `geoIndicators` to `lpi_tall`
+
+Previously, `generate_aero_inputs()` read `BareSoil` from
+`geoIndicators.csv`, a pre-computed indicators table fetched alongside the
+other tall tables. This introduced an unnecessary file dependency: the same
+value can be computed on-the-fly from the raw LPI observations already
+present in `lpi_tall.csv`.
+
+**What changed:**
+
+- `generate_aero_inputs()` no longer reads `geoIndicators.csv`. It now calls
+  `terradactyl::pct_cover(lpi_tall, hit = "first", indicator_variables = "code")`
+  and selects the `S` column (first-hit soil-surface codes) as `BareSoil`.
+  This matches the definition used by `terradactyl::pct_bareground()`.
+- The required input file count drops from five to four.
+- Tests were updated: the `make_geoind()` fixture was replaced with
+  `make_lpi_tall()`, which produces a minimal tall LPI table with a `code`
+  column containing `"S"` (bare soil) and `"PF"` (perennial forb) hits.
 

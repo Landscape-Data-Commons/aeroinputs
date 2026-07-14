@@ -209,7 +209,7 @@ Tall/
   gap_tall.csv
   height_tall.csv
   lpi_tall.csv
-  geoIndicators.csv
 ```
 
-These files are the required inputs for `generate_aero_inputs()`.
+These are the four required inputs for `generate_aero_inputs()`. Bare-soil
+cover is derived directly from `lpi_tall.csv` via `terradactyl::pct_cover()`.
