@@ -33,10 +33,10 @@ fake_indicators <- function() {
 test_that("fetch_chain returns a list with data and final_keys", {
   # Stub trex::fetch_ldc so no HTTP calls are made
   local_mocked_bindings(
-    fetch_ldc = function(data_type, keys, key_type, token, base_url) {
+    fetch_ldc = function(data_type, ...) {
       if (data_type == "gap")        return(fake_gap())
       if (data_type == "indicators") return(fake_indicators())
-      tibble::tibble(PrimaryKey = keys)
+      tibble::tibble(PrimaryKey = character(0))
     },
     .package = "trex"
   )
@@ -55,7 +55,7 @@ test_that("fetch_chain returns a list with data and final_keys", {
 
 test_that("fetch_chain stops early when keys become empty", {
   local_mocked_bindings(
-    fetch_ldc = function(data_type, keys, key_type, token, base_url) {
+    fetch_ldc = function(data_type, ...) {
       tibble::tibble(PrimaryKey = character(0))
     },
     .package = "trex"
@@ -82,10 +82,10 @@ test_that("fetch_ldc_data respects excluded_project_keys", {
   save(header, file = header_cache)
 
   local_mocked_bindings(
-    fetch_ldc = function(data_type, keys, key_type, token, base_url) {
+    fetch_ldc = function(data_type, ...) {
       if (data_type == "gap")        return(fake_gap())
       if (data_type == "indicators") return(fake_indicators())
-      tibble::tibble(PrimaryKey = keys)
+      tibble::tibble(PrimaryKey = character(0))
     },
     .package = "trex"
   )
